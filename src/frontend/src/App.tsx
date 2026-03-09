@@ -12,7 +12,14 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, ChevronDown, Loader2, Stars, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  ChevronDown,
+  Loader2,
+  Stars,
+  Trash2,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -57,6 +64,28 @@ export default function App() {
   const [toYear, setToYear] = useState<number>(new Date().getFullYear() + 44);
   const [showYearCharts, setShowYearCharts] = useState(false);
 
+  // ── Comparison state ─────────────────────────────────────────────────────────
+  const [p1Dob, setP1Dob] = useState<DOBState>({
+    day: "",
+    month: "",
+    year: "",
+  });
+  const [p2Dob, setP2Dob] = useState<DOBState>({
+    day: "",
+    month: "",
+    year: "",
+  });
+  const [compFromYear, setCompFromYear] = useState<number>(
+    new Date().getFullYear(),
+  );
+  const [compToYear, setCompToYear] = useState<number>(
+    new Date().getFullYear() + 44,
+  );
+  const [showComparison, setShowComparison] = useState(false);
+  const [compError, setCompError] = useState<string | null>(null);
+  const [p1Result, setP1Result] = useState<NumerologyResult | null>(null);
+  const [p2Result, setP2Result] = useState<NumerologyResult | null>(null);
+
   const { data: charts = [], isLoading: chartsLoading } = useGetAllCharts();
   const createChart = useCreateChart();
   const deleteChart = useDeleteChart();
@@ -87,6 +116,42 @@ export default function App() {
     setShowYearCharts(false);
     setFromYear(year);
     setToYear(year + 44);
+  }
+
+  // ── Comparison Show Chart ────────────────────────────────────────────────────
+
+  function handleShowComparison() {
+    if (!p1Dob.day || !p1Dob.month || !p1Dob.year) {
+      setCompError("Please enter a complete date of birth for Person 1.");
+      return;
+    }
+    if (!p2Dob.day || !p2Dob.month || !p2Dob.year) {
+      setCompError("Please enter a complete date of birth for Person 2.");
+      return;
+    }
+
+    const d1 = Number.parseInt(p1Dob.day, 10);
+    const m1 = Number.parseInt(p1Dob.month, 10);
+    const y1 = Number.parseInt(p1Dob.year, 10);
+    const err1 = validateDOB(d1, m1, y1);
+    if (err1) {
+      setCompError(`Person 1: ${err1}`);
+      return;
+    }
+
+    const d2 = Number.parseInt(p2Dob.day, 10);
+    const m2 = Number.parseInt(p2Dob.month, 10);
+    const y2 = Number.parseInt(p2Dob.year, 10);
+    const err2 = validateDOB(d2, m2, y2);
+    if (err2) {
+      setCompError(`Person 2: ${err2}`);
+      return;
+    }
+
+    setCompError(null);
+    setP1Result(calculateNumerology(formatDOB(d1, m1, y1)));
+    setP2Result(calculateNumerology(formatDOB(d2, m2, y2)));
+    setShowComparison(true);
   }
 
   // ── Save Chart ───────────────────────────────────────────────────────────────
@@ -182,6 +247,12 @@ export default function App() {
         >
           Ancient Numbers · Modern Insight
         </p>
+        <p
+          className="font-body text-xs mt-1 tracking-wide"
+          style={{ color: "oklch(var(--muted-foreground) / 0.7)" }}
+        >
+          By Viku Kharb
+        </p>
         {/* Decorative divider */}
         <div className="mt-4 flex items-center justify-center gap-3">
           <div
@@ -222,6 +293,13 @@ export default function App() {
               className="flex-1 font-body data-[state=active]:font-semibold"
             >
               Saved ({charts.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="comparison"
+              data-ocid="comparison_tab.tab"
+              className="flex-1 font-body data-[state=active]:font-semibold"
+            >
+              Compare
             </TabsTrigger>
           </TabsList>
 
@@ -695,6 +773,545 @@ export default function App() {
                   ))}
                 </div>
               )}
+            </motion.div>
+          </TabsContent>
+
+          {/* ── Comparison Tab ───────────────────────────────────────────── */}
+          <TabsContent value="comparison" className="mt-0">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <AnimatePresence mode="wait">
+                {!showComparison ? (
+                  <motion.div
+                    key="comparison-form"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-4"
+                  >
+                    {/* Person 1 */}
+                    <div
+                      className="rounded-lg p-5"
+                      style={{
+                        background: "oklch(var(--card))",
+                        border: "1px solid oklch(var(--border))",
+                      }}
+                    >
+                      <h2
+                        className="font-display text-lg font-semibold mb-4"
+                        style={{ color: "oklch(var(--primary))" }}
+                      >
+                        Person 1
+                      </h2>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            Day
+                          </Label>
+                          <select
+                            data-ocid="comparison_p1_dob.input"
+                            value={p1Dob.day}
+                            onChange={(e) =>
+                              setP1Dob((prev) => ({
+                                ...prev,
+                                day: e.target.value,
+                              }))
+                            }
+                            className="w-full h-9 px-3 rounded-md text-sm font-body appearance-none cursor-pointer"
+                            style={{
+                              background: "oklch(var(--input))",
+                              border: "1px solid oklch(var(--border))",
+                              color: p1Dob.day
+                                ? "oklch(var(--foreground))"
+                                : "oklch(var(--muted-foreground))",
+                            }}
+                          >
+                            <option value="" disabled>
+                              DD
+                            </option>
+                            {dayOptions.map((d) => (
+                              <option key={d} value={String(d)}>
+                                {String(d).padStart(2, "0")}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            Month
+                          </Label>
+                          <select
+                            value={p1Dob.month}
+                            onChange={(e) =>
+                              setP1Dob((prev) => ({
+                                ...prev,
+                                month: e.target.value,
+                              }))
+                            }
+                            className="w-full h-9 px-3 rounded-md text-sm font-body appearance-none cursor-pointer"
+                            style={{
+                              background: "oklch(var(--input))",
+                              border: "1px solid oklch(var(--border))",
+                              color: p1Dob.month
+                                ? "oklch(var(--foreground))"
+                                : "oklch(var(--muted-foreground))",
+                            }}
+                          >
+                            <option value="" disabled>
+                              MM
+                            </option>
+                            {monthOptions.map((m) => (
+                              <option key={m} value={String(m)}>
+                                {String(m).padStart(2, "0")} – {getMonthName(m)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            Year
+                          </Label>
+                          <YearScrollPicker
+                            value={p1Dob.year}
+                            onChange={(v) =>
+                              setP1Dob((prev) => ({ ...prev, year: v }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Person 2 */}
+                    <div
+                      className="rounded-lg p-5"
+                      style={{
+                        background: "oklch(var(--card))",
+                        border: "1px solid oklch(var(--border))",
+                      }}
+                    >
+                      <h2
+                        className="font-display text-lg font-semibold mb-4"
+                        style={{ color: "oklch(var(--primary))" }}
+                      >
+                        Person 2
+                      </h2>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            Day
+                          </Label>
+                          <select
+                            data-ocid="comparison_p2_dob.input"
+                            value={p2Dob.day}
+                            onChange={(e) =>
+                              setP2Dob((prev) => ({
+                                ...prev,
+                                day: e.target.value,
+                              }))
+                            }
+                            className="w-full h-9 px-3 rounded-md text-sm font-body appearance-none cursor-pointer"
+                            style={{
+                              background: "oklch(var(--input))",
+                              border: "1px solid oklch(var(--border))",
+                              color: p2Dob.day
+                                ? "oklch(var(--foreground))"
+                                : "oklch(var(--muted-foreground))",
+                            }}
+                          >
+                            <option value="" disabled>
+                              DD
+                            </option>
+                            {dayOptions.map((d) => (
+                              <option key={d} value={String(d)}>
+                                {String(d).padStart(2, "0")}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            Month
+                          </Label>
+                          <select
+                            value={p2Dob.month}
+                            onChange={(e) =>
+                              setP2Dob((prev) => ({
+                                ...prev,
+                                month: e.target.value,
+                              }))
+                            }
+                            className="w-full h-9 px-3 rounded-md text-sm font-body appearance-none cursor-pointer"
+                            style={{
+                              background: "oklch(var(--input))",
+                              border: "1px solid oklch(var(--border))",
+                              color: p2Dob.month
+                                ? "oklch(var(--foreground))"
+                                : "oklch(var(--muted-foreground))",
+                            }}
+                          >
+                            <option value="" disabled>
+                              MM
+                            </option>
+                            {monthOptions.map((m) => (
+                              <option key={m} value={String(m)}>
+                                {String(m).padStart(2, "0")} – {getMonthName(m)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            Year
+                          </Label>
+                          <YearScrollPicker
+                            value={p2Dob.year}
+                            onChange={(v) =>
+                              setP2Dob((prev) => ({ ...prev, year: v }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Shared Year Range */}
+                    <div
+                      className="rounded-lg p-5"
+                      style={{
+                        background: "oklch(var(--card))",
+                        border: "1px solid oklch(var(--border))",
+                      }}
+                    >
+                      <h3
+                        className="font-display text-base font-semibold mb-3"
+                        style={{ color: "oklch(var(--primary))" }}
+                      >
+                        Year Range
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            From Year
+                          </Label>
+                          <Input
+                            type="number"
+                            min={1900}
+                            max={2200}
+                            value={compFromYear}
+                            onChange={(e) =>
+                              setCompFromYear(
+                                Number.parseInt(e.target.value, 10) ||
+                                  compFromYear,
+                              )
+                            }
+                            className="font-body"
+                            style={{
+                              background: "oklch(var(--input))",
+                              borderColor: "oklch(var(--border))",
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-xs uppercase tracking-wider font-body"
+                            style={{ color: "oklch(var(--muted-foreground))" }}
+                          >
+                            To Year
+                          </Label>
+                          <Input
+                            type="number"
+                            min={1900}
+                            max={2200}
+                            value={compToYear}
+                            onChange={(e) =>
+                              setCompToYear(
+                                Number.parseInt(e.target.value, 10) ||
+                                  compToYear,
+                              )
+                            }
+                            className="font-body"
+                            style={{
+                              background: "oklch(var(--input))",
+                              borderColor: "oklch(var(--border))",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Error */}
+                    {compError && (
+                      <p
+                        className="text-xs font-body"
+                        style={{ color: "oklch(var(--destructive))" }}
+                        data-ocid="comparison.error_state"
+                      >
+                        {compError}
+                      </p>
+                    )}
+
+                    <Button
+                      onClick={handleShowComparison}
+                      data-ocid="comparison.primary_button"
+                      className="w-full font-body font-semibold tracking-wide"
+                      style={{
+                        background: "oklch(var(--primary))",
+                        color: "oklch(var(--primary-foreground))",
+                      }}
+                    >
+                      <ChevronDown className="w-4 h-4 mr-2" />
+                      Compare Charts
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="comparison-results"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-6"
+                  >
+                    {/* Go Back button */}
+                    <Button
+                      variant="outline"
+                      data-ocid="comparison.secondary_button"
+                      onClick={() => setShowComparison(false)}
+                      className="font-body font-semibold"
+                      style={{
+                        borderColor: "oklch(var(--border))",
+                        color: "oklch(var(--foreground))",
+                      }}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Go Back
+                    </Button>
+
+                    {/* Side-by-side Natal Charts */}
+                    {p1Result && p2Result && (
+                      <>
+                        <div
+                          className="rounded-lg p-4"
+                          style={{
+                            background: "oklch(var(--card))",
+                            border: "1px solid oklch(var(--border))",
+                          }}
+                        >
+                          <h3
+                            className="font-display text-base font-semibold mb-4 text-center"
+                            style={{ color: "oklch(var(--primary))" }}
+                          >
+                            Natal Charts
+                          </h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Person 1 natal */}
+                            <div className="space-y-3">
+                              <p
+                                className="font-display text-sm font-semibold text-center"
+                                style={{ color: "oklch(var(--primary))" }}
+                              >
+                                Person 1
+                              </p>
+                              <div className="flex justify-center gap-4 text-center">
+                                <div>
+                                  <p
+                                    className="font-body text-xs uppercase tracking-wider"
+                                    style={{
+                                      color: "oklch(var(--muted-foreground))",
+                                    }}
+                                  >
+                                    Basic
+                                  </p>
+                                  <p
+                                    className="font-display text-2xl font-bold"
+                                    style={{
+                                      color: "oklch(var(--number-basic))",
+                                    }}
+                                  >
+                                    {p1Result.basicNumber}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p
+                                    className="font-body text-xs uppercase tracking-wider"
+                                    style={{
+                                      color: "oklch(var(--muted-foreground))",
+                                    }}
+                                  >
+                                    Destiny
+                                  </p>
+                                  <p
+                                    className="font-display text-2xl font-bold"
+                                    style={{
+                                      color: "oklch(var(--number-destiny))",
+                                    }}
+                                  >
+                                    {p1Result.destinyNumber}
+                                  </p>
+                                </div>
+                              </div>
+                              <NatalChart
+                                cellCounts={p1Result.cellCounts}
+                                basicNumber={p1Result.basicNumber}
+                                destinyNumber={p1Result.destinyNumber}
+                                animate={true}
+                              />
+                            </div>
+
+                            {/* Person 2 natal */}
+                            <div className="space-y-3">
+                              <p
+                                className="font-display text-sm font-semibold text-center"
+                                style={{ color: "oklch(var(--primary))" }}
+                              >
+                                Person 2
+                              </p>
+                              <div className="flex justify-center gap-4 text-center">
+                                <div>
+                                  <p
+                                    className="font-body text-xs uppercase tracking-wider"
+                                    style={{
+                                      color: "oklch(var(--muted-foreground))",
+                                    }}
+                                  >
+                                    Basic
+                                  </p>
+                                  <p
+                                    className="font-display text-2xl font-bold"
+                                    style={{
+                                      color: "oklch(var(--number-basic))",
+                                    }}
+                                  >
+                                    {p2Result.basicNumber}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p
+                                    className="font-body text-xs uppercase tracking-wider"
+                                    style={{
+                                      color: "oklch(var(--muted-foreground))",
+                                    }}
+                                  >
+                                    Destiny
+                                  </p>
+                                  <p
+                                    className="font-display text-2xl font-bold"
+                                    style={{
+                                      color: "oklch(var(--number-destiny))",
+                                    }}
+                                  >
+                                    {p2Result.destinyNumber}
+                                  </p>
+                                </div>
+                              </div>
+                              <NatalChart
+                                cellCounts={p2Result.cellCounts}
+                                basicNumber={p2Result.basicNumber}
+                                destinyNumber={p2Result.destinyNumber}
+                                animate={true}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Year/Dasa Charts side by side */}
+                        <div className="space-y-4">
+                          <h3
+                            className="font-display text-base font-semibold text-center"
+                            style={{ color: "oklch(var(--primary))" }}
+                          >
+                            Dasa &amp; Year Charts
+                          </h3>
+
+                          {/* Person 1 year charts */}
+                          <div
+                            className="rounded-lg p-4"
+                            style={{
+                              background: "oklch(var(--card))",
+                              border: "1px solid oklch(var(--border))",
+                            }}
+                          >
+                            <p
+                              className="font-display text-sm font-semibold mb-3"
+                              style={{ color: "oklch(var(--primary))" }}
+                            >
+                              Person 1 —{" "}
+                              {formatDOB(
+                                Number.parseInt(p1Dob.day, 10),
+                                Number.parseInt(p1Dob.month, 10),
+                                Number.parseInt(p1Dob.year, 10),
+                              )}
+                            </p>
+                            <YearChartGrid
+                              day={Number.parseInt(p1Dob.day, 10)}
+                              month={Number.parseInt(p1Dob.month, 10)}
+                              year={Number.parseInt(p1Dob.year, 10)}
+                              basicNumber={p1Result.basicNumber}
+                              destinyNumber={p1Result.destinyNumber}
+                              natalCellCounts={p1Result.cellCounts}
+                              fromYear={compFromYear}
+                              toYear={compToYear}
+                            />
+                          </div>
+
+                          {/* Person 2 year charts */}
+                          <div
+                            className="rounded-lg p-4"
+                            style={{
+                              background: "oklch(var(--card))",
+                              border: "1px solid oklch(var(--border))",
+                            }}
+                          >
+                            <p
+                              className="font-display text-sm font-semibold mb-3"
+                              style={{ color: "oklch(var(--primary))" }}
+                            >
+                              Person 2 —{" "}
+                              {formatDOB(
+                                Number.parseInt(p2Dob.day, 10),
+                                Number.parseInt(p2Dob.month, 10),
+                                Number.parseInt(p2Dob.year, 10),
+                              )}
+                            </p>
+                            <YearChartGrid
+                              day={Number.parseInt(p2Dob.day, 10)}
+                              month={Number.parseInt(p2Dob.month, 10)}
+                              year={Number.parseInt(p2Dob.year, 10)}
+                              basicNumber={p2Result.basicNumber}
+                              destinyNumber={p2Result.destinyNumber}
+                              natalCellCounts={p2Result.cellCounts}
+                              fromYear={compFromYear}
+                              toYear={compToYear}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </TabsContent>
         </Tabs>

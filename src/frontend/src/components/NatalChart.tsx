@@ -42,6 +42,7 @@ export function NatalChart({
   hideHeader = false,
 }: NatalChartProps) {
   const cellMinHeight = compact ? "44px" : "72px";
+  const watermarkFontSize = compact ? "8px" : "10px";
 
   return (
     <div
@@ -158,11 +159,40 @@ export function NatalChart({
                   transition: "background 0.2s ease",
                 }}
               >
+                {/* Watermark — always present, behind all content */}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: watermarkFontSize,
+                    fontFamily: "serif",
+                    fontWeight: 600,
+                    color: "#666",
+                    opacity: 0.1,
+                    transform: "rotate(-20deg)",
+                    userSelect: "none",
+                    pointerEvents: "none",
+                    whiteSpace: "nowrap",
+                    zIndex: 0,
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Viku Kharb
+                </span>
+
                 {/* Corner label (position number) */}
                 {!compact && (
                   <span
                     className="absolute top-1 left-1.5 text-[9px] font-body select-none"
-                    style={{ color: "oklch(0.65 0.01 264)", opacity: 0.5 }}
+                    style={{
+                      color: "oklch(0.65 0.01 264)",
+                      opacity: 0.5,
+                      zIndex: 1,
+                    }}
                   >
                     {num}
                   </span>
@@ -180,7 +210,7 @@ export function NatalChart({
                       duration: 0.25,
                     }}
                     className="font-display font-bold select-none leading-none flex items-center"
-                    style={{ fontSize }}
+                    style={{ fontSize, position: "relative", zIndex: 1 }}
                   >
                     {/* Natal digits */}
                     {hasValue && (
