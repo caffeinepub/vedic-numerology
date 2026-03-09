@@ -197,6 +197,32 @@ export function getDayOfWeekNumber(date: Date): number {
   return map[date.getDay()];
 }
 
+export const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+/**
+ * Calculate day number for a specific date within a month period.
+ * Formula: reduce(monthNumber + dayOfWeekNumber(date))
+ * Sun=1, Mon=2, Tue=9, Wed=5, Thu=3, Fri=6, Sat=8
+ */
+export function calculateDayNumber(date: Date, monthNumber: number): number {
+  const dow = getDayOfWeekNumber(date);
+  let n = monthNumber + dow;
+  while (n > 9) {
+    n = String(n)
+      .split("")
+      .reduce((sum, d) => sum + Number.parseInt(d, 10), 0);
+  }
+  return n;
+}
+
 // ─── Year Number ────────────────────────────────────────────────────────────
 
 /**
@@ -222,7 +248,13 @@ export function calculateYearNumber(
     if (d !== 0) sum += d;
   }
 
-  return reduceToSingleDigit(sum);
+  let n = sum;
+  while (n > 9) {
+    n = String(n)
+      .split("")
+      .reduce((s, d) => s + Number.parseInt(d, 10), 0);
+  }
+  return n;
 }
 
 // ─── Dasa Cycle ─────────────────────────────────────────────────────────────

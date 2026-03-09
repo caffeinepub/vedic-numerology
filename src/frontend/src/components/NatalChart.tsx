@@ -16,12 +16,17 @@ interface NatalChartProps {
   yearLabel?: string;
   /** Month number — shown in purple after dasa/year digits */
   monthNumber?: number;
+  /** Day number — shown in red */
+  dayNumber?: number;
+  /** Hide the chart header entirely */
+  hideHeader?: boolean;
 }
 
 const GREEN = "#16a34a";
 // Dark navy — clearly visible on light/creamy background
 const DASA_COLOR = "#1E3A5F";
 const MONTH_COLOR = "#7c3aed";
+const DAY_COLOR = "#dc2626";
 
 export function NatalChart({
   cellCounts,
@@ -33,6 +38,8 @@ export function NatalChart({
   compact = false,
   yearLabel,
   monthNumber,
+  dayNumber,
+  hideHeader = false,
 }: NatalChartProps) {
   const cellMinHeight = compact ? "44px" : "72px";
 
@@ -46,31 +53,34 @@ export function NatalChart({
       }}
     >
       {/* Header */}
-      {yearLabel ? (
-        <div
-          className="py-1.5 px-3 text-center font-display font-bold tracking-[0.12em] text-xs uppercase"
-          style={{ background: GREEN, color: "#ffffff" }}
-        >
-          {yearLabel}
-        </div>
-      ) : (
-        <div
-          className="py-2.5 px-4 text-center font-display font-bold tracking-[0.2em] text-sm uppercase"
-          style={{
-            background: "oklch(var(--natal-header))",
-            color: "oklch(var(--natal-header-fg))",
-          }}
-        >
-          NATAL CHAR
-        </div>
-      )}
+      {!hideHeader &&
+        (yearLabel ? (
+          <div
+            className="py-1.5 px-3 text-center font-display font-bold tracking-[0.12em] text-xs uppercase"
+            style={{ background: GREEN, color: "#ffffff" }}
+          >
+            {yearLabel}
+          </div>
+        ) : (
+          <div
+            className="py-2.5 px-4 text-center font-display font-bold tracking-[0.2em] text-sm uppercase"
+            style={{
+              background: "oklch(var(--natal-header))",
+              color: "oklch(var(--natal-header-fg))",
+            }}
+          >
+            NATAL CHAR
+          </div>
+        ))}
 
       {/* Grid */}
       <div
         className="grid grid-cols-3"
         style={{
           border: "2px solid oklch(var(--natal-border))",
-          borderTop: "none",
+          borderTop: hideHeader
+            ? "2px solid oklch(var(--natal-border))"
+            : "none",
         }}
       >
         {GRID_LAYOUT.map((row, rowIdx) =>
@@ -85,6 +95,7 @@ export function NatalChart({
             const hasDasa = dasaNumber === num;
             const hasYear = yearNumber === num;
             const hasMonth = monthNumber === num;
+            const hasDay = dayNumber === num;
 
             // Natal number color
             const natalColor = isBasic
@@ -100,7 +111,8 @@ export function NatalChart({
               (hasValue ? display.length : 0) +
               (hasDasa ? 1 : 0) +
               (hasYear ? 1 : 0) +
-              (hasMonth ? 1 : 0);
+              (hasMonth ? 1 : 0) +
+              (hasDay ? 1 : 0);
             const fontSize = compact
               ? totalChars <= 1
                 ? "1.1rem"
@@ -128,7 +140,7 @@ export function NatalChart({
                   aspectRatio: "1 / 1",
                   minHeight: cellMinHeight,
                   background:
-                    hasValue || hasDasa || hasYear || hasMonth
+                    hasValue || hasDasa || hasYear || hasMonth || hasDay
                       ? "oklch(0.94 0.02 80)"
                       : "oklch(var(--natal-cell-bg))",
                   borderRight:
@@ -140,7 +152,7 @@ export function NatalChart({
                       ? "1.5px solid oklch(var(--natal-border) / 0.6)"
                       : "none",
                   boxShadow:
-                    hasValue || hasDasa || hasYear || hasMonth
+                    hasValue || hasDasa || hasYear || hasMonth || hasDay
                       ? "inset 0 0 12px oklch(0.76 0.165 68 / 0.10)"
                       : "none",
                   transition: "background 0.2s ease",
@@ -156,8 +168,8 @@ export function NatalChart({
                   </span>
                 )}
 
-                {/* Cell content: natal + dasa (dark navy) + year (green) + month (purple) */}
-                {(hasValue || hasDasa || hasYear || hasMonth) && (
+                {/* Cell content: natal + dasa + year + month + day */}
+                {(hasValue || hasDasa || hasYear || hasMonth || hasDay) && (
                   <motion.span
                     initial={shouldAnimate ? { opacity: 0, y: 4 } : false}
                     animate={{ opacity: 1, y: 0 }}
@@ -197,6 +209,12 @@ export function NatalChart({
                     {hasMonth && (
                       <span style={{ color: MONTH_COLOR }}>{num}</span>
                     )}
+                    {/* Day digit in red */}
+                    {hasDay && (
+                      <span style={{ color: DAY_COLOR, fontWeight: 900 }}>
+                        {num}
+                      </span>
+                    )}
                   </motion.span>
                 )}
               </motion.div>
@@ -215,6 +233,7 @@ export function NatalChart({
           <LegendItem color={DASA_COLOR} label="Dasa" />
           <LegendItem color={GREEN} label="Year" />
           <LegendItem color={MONTH_COLOR} label="Month" />
+          <LegendItem color={DAY_COLOR} label="Day" />
         </div>
       )}
     </div>
