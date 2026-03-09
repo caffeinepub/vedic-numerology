@@ -241,6 +241,59 @@ export interface DasaPeriod {
  *
  * Returns only periods overlapping with [fromYear, toYear].
  */
+// ─── Month Cycle ─────────────────────────────────────────────────────────────
+
+export interface MonthPeriod {
+  monthNumber: number; // 1-9
+  startDate: Date;
+  endDate: Date; // inclusive last day
+}
+
+/**
+ * Calculate the 9 month periods for a 360-day numerology year.
+ * Start = birthday in targetYear.
+ * Sequence begins at yearNumber, then wraps through 1-9.
+ * Each period N has duration N×8 days. Total = 360 days.
+ * The remaining 5 days (days 361-365) are shown as a blank/line.
+ */
+export function calculateMonthCycle(
+  day: number,
+  month: number,
+  targetYear: number,
+  yearNumber: number,
+): MonthPeriod[] {
+  // Start = birthday in targetYear
+  const startDate = new Date(targetYear, month - 1, day);
+
+  // Sequence: yearNumber, then wrap through 1-9
+  // e.g. yearNumber=9 → [9,1,2,3,4,5,6,7,8]
+  const sequence: number[] = [];
+  for (let i = 0; i < 9; i++) {
+    sequence.push(((yearNumber - 1 + i) % 9) + 1);
+  }
+
+  const periods: MonthPeriod[] = [];
+  let currentDate = new Date(startDate);
+
+  for (const num of sequence) {
+    const duration = num * 8; // days
+    const periodStart = new Date(currentDate);
+    const periodEnd = new Date(currentDate);
+    periodEnd.setDate(periodEnd.getDate() + duration - 1); // inclusive
+
+    periods.push({
+      monthNumber: num,
+      startDate: periodStart,
+      endDate: periodEnd,
+    });
+
+    currentDate = new Date(currentDate);
+    currentDate.setDate(currentDate.getDate() + duration);
+  }
+
+  return periods; // 9 periods, total = 360 days
+}
+
 export function calculateDasaCycle(
   basicNumber: number,
   birthYear: number,

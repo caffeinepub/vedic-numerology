@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { calculateDasaCycle, calculateYearNumber } from "../utils/numerology";
+import { MonthChartDetail } from "./MonthChartDetail";
 import { NatalChart } from "./NatalChart";
 
 const GREEN = "#16a34a";
@@ -34,6 +35,8 @@ export function YearChartGrid({
   fromYear,
   toYear,
 }: YearChartGridProps) {
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+
   const entries = useMemo<YearEntry[]>(() => {
     const dasaPeriods = calculateDasaCycle(basicNumber, year, fromYear, toYear);
     const result: YearEntry[] = [];
@@ -56,6 +59,11 @@ export function YearChartGrid({
 
     return result;
   }, [day, month, year, basicNumber, fromYear, toYear]);
+
+  const selectedEntry =
+    selectedYear !== null
+      ? (entries.find((e) => e.yearIter === selectedYear) ?? null)
+      : null;
 
   return (
     <div data-ocid="year_charts.panel" className="space-y-4">
@@ -87,7 +95,8 @@ export function YearChartGrid({
             className="text-xs font-body"
             style={{ color: "oklch(var(--muted-foreground))" }}
           >
-            Showing {entries.length} year charts
+            Showing {entries.length} year charts · Tap a card to see month
+            charts
           </span>
         </div>
       </div>
@@ -95,13 +104,36 @@ export function YearChartGrid({
       {/* Year chart grid — 2 columns */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {entries.map((entry) => (
-          <div
+          <button
             key={entry.yearIter}
+            type="button"
             data-ocid="year_chart.card"
-            className="rounded-md overflow-hidden"
+            className="rounded-md overflow-hidden cursor-pointer transition-all text-left w-full p-0 bg-transparent"
+            onClick={() => setSelectedYear(entry.yearIter)}
             style={{
               background: "oklch(var(--card))",
-              border: "1px solid oklch(var(--border))",
+              border:
+                selectedYear === entry.yearIter
+                  ? `2px solid ${GREEN}`
+                  : "1px solid oklch(var(--border))",
+              boxShadow:
+                selectedYear === entry.yearIter
+                  ? `0 0 0 2px ${GREEN}33`
+                  : "none",
+              transform:
+                selectedYear === entry.yearIter ? "scale(1.02)" : "scale(1)",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = GREEN;
+              (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                `0 0 0 2px ${GREEN}22`;
+            }}
+            onMouseLeave={(e) => {
+              if (selectedYear !== entry.yearIter) {
+                (e.currentTarget as HTMLButtonElement).style.borderColor =
+                  "oklch(var(--border))";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+              }
             }}
           >
             <NatalChart
@@ -114,9 +146,25 @@ export function YearChartGrid({
               compact={true}
               yearLabel={entry.yearLabel}
             />
-          </div>
+          </button>
         ))}
       </div>
+
+      {/* Month Chart Detail Modal */}
+      {selectedEntry !== null && selectedYear !== null && (
+        <MonthChartDetail
+          day={day}
+          month={month}
+          birthYear={year}
+          targetYear={selectedYear}
+          basicNumber={basicNumber}
+          destinyNumber={destinyNumber}
+          natalCellCounts={natalCellCounts}
+          dasaNumber={selectedEntry.dasaNumber}
+          yearNumber={selectedEntry.yearNumber}
+          onClose={() => setSelectedYear(null)}
+        />
+      )}
     </div>
   );
 }
