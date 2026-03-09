@@ -8,13 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +18,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { NatalChart } from "./components/NatalChart";
 import { YearChartGrid } from "./components/YearChartGrid";
+import { YearScrollPicker } from "./components/YearScrollPicker";
 import {
   type Chart,
   useCreateChart,
@@ -157,11 +152,7 @@ export default function App() {
 
   const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from(
-    { length: currentYear - 1900 + 1 },
-    (_, i) => currentYear - i,
-  );
+  // yearOptions moved to YearScrollPicker component
 
   return (
     <div className="relative min-h-screen flex flex-col z-10">
@@ -265,36 +256,30 @@ export default function App() {
                     >
                       Day
                     </Label>
-                    <Select
+                    <select
+                      data-ocid="dob.input"
                       value={dob.day}
-                      onValueChange={(v) =>
-                        setDob((prev) => ({ ...prev, day: v }))
+                      onChange={(e) =>
+                        setDob((prev) => ({ ...prev, day: e.target.value }))
                       }
+                      className="w-full h-9 px-3 rounded-md text-sm font-body appearance-none cursor-pointer"
+                      style={{
+                        background: "oklch(var(--input))",
+                        border: "1px solid oklch(var(--border))",
+                        color: dob.day
+                          ? "oklch(var(--foreground))"
+                          : "oklch(var(--muted-foreground))",
+                      }}
                     >
-                      <SelectTrigger
-                        data-ocid="dob.input"
-                        className="font-body"
-                        style={{
-                          background: "oklch(var(--input))",
-                          borderColor: "oklch(var(--border))",
-                        }}
-                      >
-                        <SelectValue placeholder="DD">
-                          {dob.day ? dob.day.padStart(2, "0") : "DD"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dayOptions.map((d) => (
-                          <SelectItem
-                            key={d}
-                            value={String(d)}
-                            className="font-body"
-                          >
-                            {String(d).padStart(2, "0")}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="" disabled>
+                        DD
+                      </option>
+                      {dayOptions.map((d) => (
+                        <option key={d} value={String(d)}>
+                          {String(d).padStart(2, "0")}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Month */}
@@ -305,43 +290,32 @@ export default function App() {
                     >
                       Month
                     </Label>
-                    <Select
+                    <select
                       value={dob.month}
-                      onValueChange={(v) =>
-                        setDob((prev) => ({ ...prev, month: v }))
+                      onChange={(e) =>
+                        setDob((prev) => ({ ...prev, month: e.target.value }))
                       }
+                      className="w-full h-9 px-3 rounded-md text-sm font-body appearance-none cursor-pointer"
+                      style={{
+                        background: "oklch(var(--input))",
+                        border: "1px solid oklch(var(--border))",
+                        color: dob.month
+                          ? "oklch(var(--foreground))"
+                          : "oklch(var(--muted-foreground))",
+                      }}
                     >
-                      <SelectTrigger
-                        className="font-body"
-                        style={{
-                          background: "oklch(var(--input))",
-                          borderColor: "oklch(var(--border))",
-                        }}
-                      >
-                        <SelectValue placeholder="MM">
-                          {dob.month
-                            ? getMonthName(Number.parseInt(dob.month)).slice(
-                                0,
-                                3,
-                              )
-                            : "MM"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthOptions.map((m) => (
-                          <SelectItem
-                            key={m}
-                            value={String(m)}
-                            className="font-body"
-                          >
-                            {String(m).padStart(2, "0")} – {getMonthName(m)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="" disabled>
+                        MM
+                      </option>
+                      {monthOptions.map((m) => (
+                        <option key={m} value={String(m)}>
+                          {String(m).padStart(2, "0")} – {getMonthName(m)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Year */}
+                  {/* Year – custom scroll picker */}
                   <div className="space-y-1.5">
                     <Label
                       className="text-xs uppercase tracking-wider font-body"
@@ -349,35 +323,10 @@ export default function App() {
                     >
                       Year
                     </Label>
-                    <Select
+                    <YearScrollPicker
                       value={dob.year}
-                      onValueChange={(v) =>
-                        setDob((prev) => ({ ...prev, year: v }))
-                      }
-                    >
-                      <SelectTrigger
-                        className="font-body"
-                        style={{
-                          background: "oklch(var(--input))",
-                          borderColor: "oklch(var(--border))",
-                        }}
-                      >
-                        <SelectValue placeholder="YYYY">
-                          {dob.year || "YYYY"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="max-h-48">
-                        {yearOptions.map((y) => (
-                          <SelectItem
-                            key={y}
-                            value={String(y)}
-                            className="font-body"
-                          >
-                            {y}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(v) => setDob((prev) => ({ ...prev, year: v }))}
+                    />
                   </div>
                 </div>
 

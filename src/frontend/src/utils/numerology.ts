@@ -5,12 +5,13 @@
 export interface NumerologyResult {
   basicNumber: number;
   destinyNumber: number;
-  chartNumbers: number[]; // all numbers placed (with repetition), order: basic, month, year digits, destiny
+  chartNumbers: number[]; // all numbers placed (with repetition)
   cellCounts: Record<number, number>; // count of each digit 1-9
 }
 
 /**
- * Reduce a number to single digit (1-9) by summing digits
+ * Reduce a number to single digit (1-9) by summing digits.
+ * Note: 0 stays 0 (but we skip 0s when placing in chart).
  */
 function reduceToSingleDigit(input: number): number {
   let n = input;
@@ -23,7 +24,27 @@ function reduceToSingleDigit(input: number): number {
 }
 
 /**
+ * Extract individual non-zero digits from a number.
+ * e.g. 22 → [2, 2], 5 → [5], 11 → [1, 1], 3 → [3], 0 → []
+ */
+function getIndividualDigits(n: number): number[] {
+  return String(n)
+    .split("")
+    .map(Number)
+    .filter((d) => d !== 0);
+}
+
+/**
  * Calculate all numerology values from a DOB string (DD-MM-YYYY or DD/MM/YYYY)
+ *
+ * Chart placement rules:
+ * 1. Raw digits of the date (DD) placed individually (e.g. 22 → place 2, 2)
+ * 2. Basic number (reduced date to single digit) placed once more
+ * 3. Raw digits of the month (MM) placed individually (e.g. 11 → place 1, 1)
+ * 4. Last two digits of year placed individually, skip zeros
+ * 5. Destiny number placed once
+ *
+ * Destiny = sum of ALL digits of full DOB (DD+MM+YYYY) reduced to single digit.
  */
 export function calculateNumerology(dob: string): NumerologyResult {
   // Parse DOB - support both - and / separators
@@ -48,18 +69,31 @@ export function calculateNumerology(dob: string): NumerologyResult {
   const destinySum = dobDigits.reduce((a, b) => a + b, 0);
   const destinyNumber = reduceToSingleDigit(destinySum);
 
-  // Build chartNumbers array in order: basic, month, year last two digits, destiny
   const chartNumbers: number[] = [];
 
-  // 1. Basic number (from day)
-  chartNumbers.push(basicNumber);
+  // 1. Individual digits of date + basic number placement
+  // "Simple dates" (1-9, 10, 20, 30): place digits once only — basic number is the same, no extra entry
+  // "Compound dates" (11-19, 21-29, 31): place both digits AND also the basic number separately
+  const simpleDates = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30];
+  const isSimpleDate = simpleDates.includes(day);
 
-  // 2. Month digit (skip if 0, but month 1-12 never zero in valid dates)
-  if (month !== 0) {
-    chartNumbers.push(month);
+  const dayDigits = getIndividualDigits(day);
+  for (const d of dayDigits) {
+    chartNumbers.push(d);
   }
 
-  // 3. Last two digits of year, individually, skip zeros
+  // 2. Basic number — only add separately for compound dates
+  if (!isSimpleDate) {
+    chartNumbers.push(basicNumber);
+  }
+
+  // 3. Individual digits of month (e.g. month=11 → 1, 1; month=3 → 3; month=12 → 1, 2)
+  const monthDigits = getIndividualDigits(month);
+  for (const d of monthDigits) {
+    chartNumbers.push(d);
+  }
+
+  // 4. Last two digits of year, individually, skip zeros
   const yearStr = String(year).padStart(4, "0");
   const lastTwoDigits = yearStr.slice(-2).split("").map(Number);
   for (const d of lastTwoDigits) {
@@ -68,7 +102,7 @@ export function calculateNumerology(dob: string): NumerologyResult {
     }
   }
 
-  // 4. Destiny number
+  // 5. Destiny number
   chartNumbers.push(destinyNumber);
 
   // Count occurrences of each number 1-9
@@ -169,11 +203,6 @@ export function getDayOfWeekNumber(date: Date): number {
  * Calculate year number for a person with given DOB in a specific calendar year.
  * Formula: day + month + (each non-zero digit of last two digits of targetYear) + dayOfWeekNumber
  * Reduce sum to single digit 1-9.
- *
- * Example: DOB=05-02-1998, targetYear=2020
- *   Birthday in 2020: 05-02-2020 → Wednesday → planet 5
- *   Last two digits of 2020 = "20" → digits [2,0], skip 0 → add 2
- *   Sum: 5 + 2 + 2 + 5 = 14 → 1+4 = 5
  */
 export function calculateYearNumber(
   day: number,
