@@ -7,16 +7,14 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface Chart {
-    id: bigint;
-    dob: string;
-    name: string;
-    basicNumber: bigint;
-    destinyNumber: bigint;
-    chartNumbers: Array<bigint>;
+export interface User {
+    username: string;
+    passwordHash: string;
+    sectionLevel: bigint;
 }
 export interface backendInterface {
-    createChart(name: string, dob: string, basicNumber: bigint, destinyNumber: bigint, chartNumbers: Array<bigint>): Promise<bigint>;
-    deleteChart(id: bigint): Promise<void>;
-    getAllCharts(): Promise<Array<Chart>>;
+    createUser(adminUsername: string, adminPassword: string, username: string, password: string, sectionLevel: bigint): Promise<void>;
+    deleteUser(adminUsername: string, adminPassword: string, username: string): Promise<void>;
+    listUsers(adminUsername: string, adminPassword: string): Promise<Array<User>>;
+    login(username: string, password: string): Promise<bigint>;
 }

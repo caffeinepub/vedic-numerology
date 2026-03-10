@@ -4,8 +4,8 @@ import { MonthChartDetail } from "./MonthChartDetail";
 import { NatalChart } from "./NatalChart";
 
 const GREEN = "#16a34a";
-// Dark navy — matches DASA_COLOR in NatalChart, visible on light background
-const DASA_COLOR = "#1E3A5F";
+const DASA_COLOR = "#16a34a"; // green
+const YEAR_COLOR = "#ffffff"; // white
 
 interface YearChartGridProps {
   day: number;
@@ -16,6 +16,9 @@ interface YearChartGridProps {
   natalCellCounts: Record<number, number>;
   fromYear: number;
   toYear: number;
+  /** If false, clicking year cards shows a paywall instead of month chart */
+  canAccessMonth?: boolean;
+  onMonthLocked?: () => void;
 }
 
 interface YearEntry {
@@ -34,6 +37,8 @@ export function YearChartGrid({
   natalCellCounts,
   fromYear,
   toYear,
+  canAccessMonth = true,
+  onMonthLocked,
 }: YearChartGridProps) {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
@@ -41,10 +46,9 @@ export function YearChartGrid({
     const dasaPeriods = calculateDasaCycle(basicNumber, year, fromYear, toYear);
     const result: YearEntry[] = [];
 
-    const clampedTo = Math.min(toYear, fromYear + 99); // max 100 cards
+    const clampedTo = Math.min(toYear, fromYear + 99);
 
     for (let y = fromYear; y <= clampedTo; y++) {
-      // Find which dasa period this year falls into
       const period = dasaPeriods.find((p) => y >= p.startYear && y < p.endYear);
       const dasaNumber = period ? period.dasaNumber : basicNumber;
 
@@ -65,6 +69,14 @@ export function YearChartGrid({
       ? (entries.find((e) => e.yearIter === selectedYear) ?? null)
       : null;
 
+  function handleYearClick(yearIter: number) {
+    if (!canAccessMonth) {
+      onMonthLocked?.();
+      return;
+    }
+    setSelectedYear(yearIter);
+  }
+
   return (
     <div data-ocid="year_charts.panel" className="space-y-4">
       {/* Legend */}
@@ -82,7 +94,10 @@ export function YearChartGrid({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ background: GREEN }} />
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ background: YEAR_COLOR, border: "1.5px solid #aaa" }}
+          />
           <span
             className="text-xs font-body"
             style={{ color: "oklch(var(--muted-foreground))" }}
@@ -95,8 +110,10 @@ export function YearChartGrid({
             className="text-xs font-body"
             style={{ color: "oklch(var(--muted-foreground))" }}
           >
-            Showing {entries.length} year charts · Tap a card to see month
-            charts
+            {entries.length} year charts ·{" "}
+            {canAccessMonth
+              ? "Tap card for months"
+              : "🔒 Month charts require Paid access"}
           </span>
         </div>
       </div>
@@ -109,7 +126,7 @@ export function YearChartGrid({
             type="button"
             data-ocid="year_chart.card"
             className="rounded-md overflow-hidden cursor-pointer transition-all text-left w-full p-0 bg-transparent"
-            onClick={() => setSelectedYear(entry.yearIter)}
+            onClick={() => handleYearClick(entry.yearIter)}
             style={{
               background: "oklch(var(--card))",
               border:
@@ -151,7 +168,7 @@ export function YearChartGrid({
       </div>
 
       {/* Month Chart Detail Modal */}
-      {selectedEntry !== null && selectedYear !== null && (
+      {selectedEntry !== null && selectedYear !== null && canAccessMonth && (
         <MonthChartDetail
           day={day}
           month={month}

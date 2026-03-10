@@ -10,21 +10,19 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface Chart {
-  'id' : bigint,
-  'dob' : string,
-  'name' : string,
-  'basicNumber' : bigint,
-  'destinyNumber' : bigint,
-  'chartNumbers' : Array<bigint>,
+export interface User {
+  'username' : string,
+  'passwordHash' : string,
+  'sectionLevel' : bigint,
 }
 export interface _SERVICE {
-  'createChart' : ActorMethod<
-    [string, string, bigint, bigint, Array<bigint>],
-    bigint
+  'createUser' : ActorMethod<
+    [string, string, string, string, bigint],
+    undefined
   >,
-  'deleteChart' : ActorMethod<[bigint], undefined>,
-  'getAllCharts' : ActorMethod<[], Array<Chart>>,
+  'deleteUser' : ActorMethod<[string, string, string], undefined>,
+  'listUsers' : ActorMethod<[string, string], Array<User>>,
+  'login' : ActorMethod<[string, string], bigint>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

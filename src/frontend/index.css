@@ -88,9 +88,9 @@
     /* Number colour tokens */
     --number-single: 0.15 0.01 264;       /* BLACK — other/single digits */
     --number-multi: 0.15 0.01 264;        /* BLACK — repeated digits */
-    --number-basic: 0.72 0.15 70;         /* AMBER/YELLOW — basic number */
-    --number-destiny: 0.45 0.20 260;      /* BLUE — destiny number */
-    --number-dasa: 0.25 0.14 264;         /* DARK NAVY — dasa number (visible on light bg) */
+    --number-basic: 0.55 0.22 22;         /* RED — basic number */
+    --number-destiny: 0.85 0.19 93;       /* YELLOW — destiny number */
+    --number-dasa: 0.40 0.18 158;         /* GREEN — dasa number */
     --number-year: 0.40 0.18 158;         /* GREEN — year number */
   }
 

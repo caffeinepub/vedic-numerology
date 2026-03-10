@@ -8,45 +8,41 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const Chart = IDL.Record({
-  'id' : IDL.Nat,
-  'dob' : IDL.Text,
-  'name' : IDL.Text,
-  'basicNumber' : IDL.Nat,
-  'destinyNumber' : IDL.Nat,
-  'chartNumbers' : IDL.Vec(IDL.Nat),
+export const User = IDL.Record({
+  'username' : IDL.Text,
+  'passwordHash' : IDL.Text,
+  'sectionLevel' : IDL.Nat,
 });
 
 export const idlService = IDL.Service({
-  'createChart' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Vec(IDL.Nat)],
-      [IDL.Nat],
+  'createUser' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+      [],
       [],
     ),
-  'deleteChart' : IDL.Func([IDL.Nat], [], []),
-  'getAllCharts' : IDL.Func([], [IDL.Vec(Chart)], ['query']),
+  'deleteUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+  'listUsers' : IDL.Func([IDL.Text, IDL.Text], [IDL.Vec(User)], ['query']),
+  'login' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], ['query']),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  const Chart = IDL.Record({
-    'id' : IDL.Nat,
-    'dob' : IDL.Text,
-    'name' : IDL.Text,
-    'basicNumber' : IDL.Nat,
-    'destinyNumber' : IDL.Nat,
-    'chartNumbers' : IDL.Vec(IDL.Nat),
+  const User = IDL.Record({
+    'username' : IDL.Text,
+    'passwordHash' : IDL.Text,
+    'sectionLevel' : IDL.Nat,
   });
   
   return IDL.Service({
-    'createChart' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Vec(IDL.Nat)],
-        [IDL.Nat],
+    'createUser' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+        [],
         [],
       ),
-    'deleteChart' : IDL.Func([IDL.Nat], [], []),
-    'getAllCharts' : IDL.Func([], [IDL.Vec(Chart)], ['query']),
+    'deleteUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+    'listUsers' : IDL.Func([IDL.Text, IDL.Text], [IDL.Vec(User)], ['query']),
+    'login' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], ['query']),
   });
 };
 

@@ -1,29 +1,41 @@
 # Vedic Numerology
 
 ## Current State
-App has two tabs: New Chart and Saved Charts. New Chart allows DOB input and shows natal + year/dasa charts with drill-down to month and day. Saved Charts lists saved natal charts.
+The app has full numerology charts (natal, dasa, year, month, day) with color coding, watermarking, and a comparison tab. All features are publicly accessible with no authentication or access control. Destiny number is orange. Day numbers are shown per individual day.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New "Comparison" tab (3rd tab) in the main tab bar
-- Input form: Person 1 DOB (day/month dropdowns + year scroll picker), Person 2 DOB (day/month dropdowns + year scroll picker), shared From Year / To Year range
-- "Show Chart" button to display comparison
-- "Go Back" button to return to the input form from the comparison view
-- Side-by-side natal chart display: Person 1 chart on the left, Person 2 chart on the right, each with basic/destiny summary pills above
-- Side-by-side year/dasa chart grids below the natal charts for the shared year range
-- No compatibility score -- visual comparison only
+- **Admin login**: Hardcoded credentials (email: vikaskharb50@gmail.com, password: vikasadmin123). Admin logs in via a hidden admin route or a login button.
+- **Admin panel**: After admin login, show a user management table. Admin can create new user accounts with: username, password, and section level (2 or 3).
+- **User login**: A login button/modal on the main app. Users enter username + password to access their assigned section.
+- **Backend user store**: Motoko canister stores user accounts: username (text), hashed password (text), section_level (nat: 2 or 3).
+- **Section gating**:
+  - Section 1 (Free, no login): Natal chart, Year chart, Dasa numbers visible to all.
+  - Section 2 (Paid, requires login with level 2 or 3): Month chart and detailed year number views.
+  - Section 3 (Advanced, requires login with level 3): Prediction section -- show "Coming Soon" placeholder.
+- **Day numbers plural view**: In the day chart section, show all day numbers for the full month period at once (all days listed together) rather than requiring individual card taps.
 
 ### Modify
-- TabsList to include 3rd trigger for Comparison tab
+- **Destiny number color**: Change from orange to yellow.
 
 ### Remove
-- Nothing removed
+- Nothing removed.
 
 ## Implementation Plan
-1. Add `comparison` tab trigger to TabsList
-2. Create ComparisonTab component in App.tsx or separate file
-3. ComparisonTab state: person1 DOB, person2 DOB, fromYear, toYear, showComparison boolean
-4. Form view: Person 1 section, Person 2 section, shared year range, Show Chart + Cancel/Go Back buttons
-5. Results view: side-by-side natal charts with summary pills, then side-by-side YearChartGrid components
-6. Go Back button resets showComparison to false
+1. Add Motoko backend with:
+   - User type: { username: Text; passwordHash: Text; sectionLevel: Nat }
+   - createUser(username, password, sectionLevel) -> accessible only via admin token
+   - login(username, password) -> returns session token + sectionLevel
+   - getUsers() -> admin only, list all users
+   - deleteUser(username) -> admin only
+2. Frontend:
+   - Add login modal with username/password fields
+   - Add admin login flow (separate route or hidden admin button)
+   - Admin panel page: table of users, create user form (username, password, section selector)
+   - AuthContext: store current user session (username, sectionLevel) in localStorage
+   - Gate Month chart and Day chart behind sectionLevel >= 2
+   - Gate Prediction tab behind sectionLevel >= 3 (show Coming Soon placeholder)
+   - Show login prompt when non-logged user tries to access gated section
+   - Day chart view: render all days in the month period in a scrollable list at once
+   - Change destiny number color from orange to yellow

@@ -6,27 +6,32 @@ interface NatalChartProps {
   basicNumber: number;
   destinyNumber: number;
   animate?: boolean;
-  /** Current dasa number — shown in dark navy on light background */
+  /** Current dasa number */
   dasaNumber?: number;
-  /** Year number — shown in green after dasa display */
+  /** Year number */
   yearNumber?: number;
   /** Compact size for year grid view */
   compact?: boolean;
   /** If provided, shows a green header instead of the default "NATAL CHAR" header */
   yearLabel?: string;
-  /** Month number — shown in purple after dasa/year digits */
+  /** Month number */
   monthNumber?: number;
-  /** Day number — shown in red */
+  /** Day number */
   dayNumber?: number;
   /** Hide the chart header entirely */
   hideHeader?: boolean;
 }
 
-const GREEN = "#16a34a";
-// Dark navy — clearly visible on light/creamy background
-const DASA_COLOR = "#1E3A5F";
+const GREEN_HEADER = "#16a34a";
 const MONTH_COLOR = "#7c3aed";
 const DAY_COLOR = "#dc2626";
+
+// Updated color scheme
+const BASIC_COLOR = "#dc2626"; // red
+const DESTINY_COLOR = "#eab308"; // yellow
+const NATAL_COLOR = "#000000"; // black for other natal numbers
+const DASA_COLOR = "#16a34a"; // green
+const YEAR_COLOR = "#ffffff"; // white
 
 export function NatalChart({
   cellCounts,
@@ -58,7 +63,7 @@ export function NatalChart({
         (yearLabel ? (
           <div
             className="py-1.5 px-3 text-center font-display font-bold tracking-[0.12em] text-xs uppercase"
-            style={{ background: GREEN, color: "#ffffff" }}
+            style={{ background: GREEN_HEADER, color: "#ffffff" }}
           >
             {yearLabel}
           </div>
@@ -74,212 +79,147 @@ export function NatalChart({
           </div>
         ))}
 
-      {/* Grid */}
+      {/* 3×3 Grid */}
       <div
         className="grid grid-cols-3"
         style={{
-          border: "2px solid oklch(var(--natal-border))",
-          borderTop: hideHeader
-            ? "2px solid oklch(var(--natal-border))"
-            : "none",
+          border: "1.5px solid oklch(var(--natal-border))",
+          borderTop: hideHeader || !yearLabel ? undefined : "none",
         }}
       >
-        {GRID_LAYOUT.map((row, rowIdx) =>
-          row.map((num, colIdx) => {
-            const display = getCellDisplay(num, cellCounts);
-            const count = cellCounts[num] || 0;
-            const isBasic = num === basicNumber && count > 0;
-            const isDestiny = num === destinyNumber && count > 0;
-            const isMultiple = count > 1;
-            const hasValue = count > 0;
+        {GRID_LAYOUT.flat().map((cellNum, idx) => {
+          const count = cellCounts[cellNum] ?? 0;
+          const display = getCellDisplay(cellNum, cellCounts);
 
-            const hasDasa = dasaNumber === num;
-            const hasYear = yearNumber === num;
-            const hasMonth = monthNumber === num;
-            const hasDay = dayNumber === num;
+          // Determine which special numbers fall here
+          const isBasic = cellNum === basicNumber;
+          const isDestiny = cellNum === destinyNumber;
+          const isDasa = dasaNumber !== undefined && cellNum === dasaNumber;
+          const isYear = yearNumber !== undefined && cellNum === yearNumber;
+          const isMonth = monthNumber !== undefined && cellNum === monthNumber;
+          const isDay = dayNumber !== undefined && cellNum === dayNumber;
 
-            // Natal number color
-            const natalColor = isBasic
-              ? "oklch(var(--number-basic))"
-              : isDestiny
-                ? "oklch(var(--number-destiny))"
-                : isMultiple
-                  ? "oklch(var(--number-multi))"
-                  : "oklch(var(--number-single))";
+          const row = Math.floor(idx / 3);
+          const col = idx % 3;
 
-            // Build font size based on total display length
-            const totalChars =
-              (hasValue ? display.length : 0) +
-              (hasDasa ? 1 : 0) +
-              (hasYear ? 1 : 0) +
-              (hasMonth ? 1 : 0) +
-              (hasDay ? 1 : 0);
-            const fontSize = compact
-              ? totalChars <= 1
-                ? "1.1rem"
-                : totalChars === 2
-                  ? "0.9rem"
-                  : "0.75rem"
-              : totalChars <= 1
-                ? "2rem"
-                : totalChars === 2
-                  ? "1.6rem"
-                  : "1.2rem";
-
-            return (
-              <motion.div
-                key={`cell-${num}`}
-                initial={shouldAnimate ? { opacity: 0, scale: 0.8 } : false}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  delay: shouldAnimate ? (rowIdx * 3 + colIdx) * 0.05 : 0,
-                  duration: 0.3,
-                  ease: "easeOut",
-                }}
-                className="relative flex items-center justify-center"
+          return (
+            <div
+              key={cellNum}
+              className="relative flex items-center justify-center overflow-hidden"
+              style={{
+                minHeight: cellMinHeight,
+                background: "oklch(var(--natal-cell-bg))",
+                borderRight:
+                  col < 2 ? "1px solid oklch(var(--natal-border))" : "none",
+                borderBottom:
+                  row < 2 ? "1px solid oklch(var(--natal-border))" : "none",
+              }}
+            >
+              {/* Watermark */}
+              <span
+                aria-hidden
+                className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
                 style={{
-                  aspectRatio: "1 / 1",
-                  minHeight: cellMinHeight,
-                  background:
-                    hasValue || hasDasa || hasYear || hasMonth || hasDay
-                      ? "oklch(0.94 0.02 80)"
-                      : "oklch(var(--natal-cell-bg))",
-                  borderRight:
-                    colIdx < 2
-                      ? "1.5px solid oklch(var(--natal-border) / 0.6)"
-                      : "none",
-                  borderBottom:
-                    rowIdx < 2
-                      ? "1.5px solid oklch(var(--natal-border) / 0.6)"
-                      : "none",
-                  boxShadow:
-                    hasValue || hasDasa || hasYear || hasMonth || hasDay
-                      ? "inset 0 0 12px oklch(0.76 0.165 68 / 0.10)"
-                      : "none",
-                  transition: "background 0.2s ease",
+                  fontSize: watermarkFontSize,
+                  color: "oklch(0.75 0.04 90 / 0.35)",
+                  fontFamily: "Outfit, sans-serif",
+                  fontWeight: 400,
+                  transform: "rotate(-20deg)",
+                  whiteSpace: "nowrap",
+                  userSelect: "none",
+                  letterSpacing: "0.05em",
                 }}
               >
-                {/* Watermark — always present, behind all content */}
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: watermarkFontSize,
-                    fontFamily: "serif",
-                    fontWeight: 600,
-                    color: "#666",
-                    opacity: 0.1,
-                    transform: "rotate(-20deg)",
-                    userSelect: "none",
-                    pointerEvents: "none",
-                    whiteSpace: "nowrap",
-                    zIndex: 0,
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  Viku Kharb
-                </span>
+                Viku Kharb
+              </span>
 
-                {/* Corner label (position number) */}
-                {!compact && (
-                  <span
-                    className="absolute top-1 left-1.5 text-[9px] font-body select-none"
+              {/* Numbers container */}
+              <div
+                className="relative z-10 flex flex-col items-center justify-center gap-0.5"
+                style={{ padding: compact ? "2px" : "4px" }}
+              >
+                {/* Natal numbers */}
+                {count > 0 && (
+                  <motion.span
+                    initial={shouldAnimate ? { scale: 0.5, opacity: 0 } : false}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      delay: shouldAnimate ? idx * 0.05 : 0,
+                      type: "spring",
+                      stiffness: 300,
+                    }}
+                    className="font-display font-bold leading-none"
                     style={{
-                      color: "oklch(0.65 0.01 264)",
-                      opacity: 0.5,
-                      zIndex: 1,
+                      fontSize: compact ? "14px" : "22px",
+                      color: isBasic
+                        ? BASIC_COLOR
+                        : isDestiny
+                          ? DESTINY_COLOR
+                          : NATAL_COLOR,
                     }}
                   >
-                    {num}
+                    {display}
+                  </motion.span>
+                )}
+
+                {/* Dasa number (green, slightly larger) */}
+                {isDasa && (
+                  <span
+                    className="font-display font-bold leading-none"
+                    style={{
+                      fontSize: compact ? "11px" : "17px",
+                      color: DASA_COLOR,
+                    }}
+                  >
+                    {dasaNumber}
                   </span>
                 )}
 
-                {/* Cell content: natal + dasa + year + month + day */}
-                {(hasValue || hasDasa || hasYear || hasMonth || hasDay) && (
-                  <motion.span
-                    initial={shouldAnimate ? { opacity: 0, y: 4 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: shouldAnimate
-                        ? (rowIdx * 3 + colIdx) * 0.05 + 0.15
-                        : 0,
-                      duration: 0.25,
+                {/* Year number (white, largest) */}
+                {isYear && (
+                  <span
+                    className="font-display font-bold leading-none rounded-sm px-0.5"
+                    style={{
+                      fontSize: compact ? "13px" : "19px",
+                      color: YEAR_COLOR,
+                      background: "rgba(0,0,0,0.55)",
                     }}
-                    className="font-display font-bold select-none leading-none flex items-center"
-                    style={{ fontSize, position: "relative", zIndex: 1 }}
                   >
-                    {/* Natal digits */}
-                    {hasValue && (
-                      <span
-                        style={{
-                          color: natalColor,
-                          textShadow: isBasic
-                            ? "0 0 12px oklch(0.72 0.15 70 / 0.4)"
-                            : isDestiny
-                              ? "0 0 12px oklch(0.45 0.20 260 / 0.3)"
-                              : "none",
-                        }}
-                      >
-                        {display}
-                      </span>
-                    )}
-                    {/* Dasa digit in dark navy */}
-                    {hasDasa && (
-                      <span style={{ color: DASA_COLOR, fontStyle: "italic" }}>
-                        {num}
-                      </span>
-                    )}
-                    {/* Year digit in green */}
-                    {hasYear && <span style={{ color: GREEN }}>{num}</span>}
-                    {/* Month digit in purple */}
-                    {hasMonth && (
-                      <span style={{ color: MONTH_COLOR }}>{num}</span>
-                    )}
-                    {/* Day digit in red */}
-                    {hasDay && (
-                      <span style={{ color: DAY_COLOR, fontWeight: 900 }}>
-                        {num}
-                      </span>
-                    )}
-                  </motion.span>
+                    {yearNumber}
+                  </span>
                 )}
-              </motion.div>
-            );
-          }),
-        )}
+
+                {/* Month number (purple) */}
+                {isMonth && (
+                  <span
+                    className="font-display font-bold leading-none"
+                    style={{
+                      fontSize: compact ? "10px" : "14px",
+                      color: MONTH_COLOR,
+                    }}
+                  >
+                    {monthNumber}
+                  </span>
+                )}
+
+                {/* Day number (red, only in day chart) */}
+                {isDay && (
+                  <span
+                    className="font-display font-bold leading-none"
+                    style={{
+                      fontSize: compact ? "11px" : "15px",
+                      color: DAY_COLOR,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    {dayNumber}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Legend (only for non-compact, non-yearLabel charts) */}
-      {!compact && !yearLabel && (
-        <div className="flex gap-4 justify-center mt-3 flex-wrap">
-          <LegendItem color="oklch(var(--number-basic))" label="Basic" />
-          <LegendItem color="oklch(var(--number-destiny))" label="Destiny" />
-          <LegendItem color="oklch(var(--number-multi))" label="Repeated" />
-          <LegendItem color="oklch(var(--number-single))" label="Single" />
-          <LegendItem color={DASA_COLOR} label="Dasa" />
-          <LegendItem color={GREEN} label="Year" />
-          <LegendItem color={MONTH_COLOR} label="Month" />
-          <LegendItem color={DAY_COLOR} label="Day" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-      <span
-        className="text-xs font-body"
-        style={{ color: "oklch(var(--muted-foreground))" }}
-      >
-        {label}
-      </span>
     </div>
   );
 }

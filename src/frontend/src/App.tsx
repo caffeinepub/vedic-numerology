@@ -17,20 +17,28 @@ import {
   BookOpen,
   ChevronDown,
   Loader2,
+  Lock,
+  LogIn,
+  LogOut,
+  Settings,
+  Sparkles,
   Stars,
   Trash2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AdminPanel } from "./components/AdminPanel";
 import { NatalChart } from "./components/NatalChart";
 import { YearChartGrid } from "./components/YearChartGrid";
 import { YearScrollPicker } from "./components/YearScrollPicker";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import {
   type Chart,
   useCreateChart,
   useDeleteChart,
   useGetAllCharts,
+  useLoginUser,
 } from "./hooks/useQueries";
 import {
   type NumerologyResult,
@@ -51,6 +59,16 @@ interface DOBState {
 // ─── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  );
+}
+
+function AppInner() {
+  const { auth, login, loginAdmin, logout, sectionLevel } = useAuth();
+
   const [dob, setDob] = useState<DOBState>({ day: "", month: "", year: "" });
   const [result, setResult] = useState<NumerologyResult | null>(null);
   const [dobError, setDobError] = useState<string | null>(null);
@@ -63,6 +81,20 @@ export default function App() {
   const [fromYear, setFromYear] = useState<number>(new Date().getFullYear());
   const [toYear, setToYear] = useState<number>(new Date().getFullYear() + 44);
   const [showYearCharts, setShowYearCharts] = useState(false);
+
+  // ── Admin panel ──────────────────────────────────────────────────────────────
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  // ── Login modal state ────────────────────────────────────────────────────────
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginIsAdmin, setLoginIsAdmin] = useState(false);
+  const loginUser = useLoginUser();
+
+  // ── Month paywall toast ──────────────────────────────────────────────────────
+  const [showMonthGate, setShowMonthGate] = useState(false);
 
   // ── Comparison state ─────────────────────────────────────────────────────────
   const [p1Dob, setP1Dob] = useState<DOBState>({
@@ -110,41 +142,37 @@ export default function App() {
 
     setDobError(null);
     const dobStr = formatDOB(day, month, year);
-    const calc = calculateNumerology(dobStr);
-    setResult(calc);
-    // Reset year charts and set default range from birth year
+    const numerology = calculateNumerology(dobStr);
+    setResult(numerology);
     setShowYearCharts(false);
-    setFromYear(year);
-    setToYear(year + 44);
   }
 
-  // ── Comparison Show Chart ────────────────────────────────────────────────────
+  // ── Comparison handlers ──────────────────────────────────────────────────────
 
   function handleShowComparison() {
-    if (!p1Dob.day || !p1Dob.month || !p1Dob.year) {
-      setCompError("Please enter a complete date of birth for Person 1.");
-      return;
-    }
-    if (!p2Dob.day || !p2Dob.month || !p2Dob.year) {
-      setCompError("Please enter a complete date of birth for Person 2.");
-      return;
-    }
-
     const d1 = Number.parseInt(p1Dob.day, 10);
     const m1 = Number.parseInt(p1Dob.month, 10);
     const y1 = Number.parseInt(p1Dob.year, 10);
-    const err1 = validateDOB(d1, m1, y1);
-    if (err1) {
-      setCompError(`Person 1: ${err1}`);
-      return;
-    }
-
     const d2 = Number.parseInt(p2Dob.day, 10);
     const m2 = Number.parseInt(p2Dob.month, 10);
     const y2 = Number.parseInt(p2Dob.year, 10);
-    const err2 = validateDOB(d2, m2, y2);
-    if (err2) {
-      setCompError(`Person 2: ${err2}`);
+
+    if (
+      !p1Dob.day ||
+      !p1Dob.month ||
+      !p1Dob.year ||
+      !p2Dob.day ||
+      !p2Dob.month ||
+      !p2Dob.year
+    ) {
+      setCompError("Please fill in both dates of birth.");
+      return;
+    }
+
+    const e1 = validateDOB(d1, m1, y1);
+    const e2 = validateDOB(d2, m2, y2);
+    if (e1 || e2) {
+      setCompError(e1 || e2 || "Invalid date.");
       return;
     }
 
@@ -213,18 +241,125 @@ export default function App() {
     };
   }
 
-  // ─── Day Options ─────────────────────────────────────────────────────────────
+  // ── Login handlers ───────────────────────────────────────────────────────────
+
+  function openLoginModal(asAdmin = false) {
+    setLoginIsAdmin(asAdmin);
+    setLoginUsername("");
+    setLoginPassword("");
+    setLoginError(null);
+    setLoginOpen(true);
+  }
+
+  async function handleLoginSubmit() {
+    if (!loginUsername.trim() || !loginPassword.trim()) {
+      setLoginError("Please enter both username and password.");
+      return;
+    }
+
+    if (loginIsAdmin) {
+      // Admin check is client-side
+      const ok = loginAdmin(loginUsername.trim(), loginPassword.trim());
+      if (ok) {
+        setLoginOpen(false);
+        setShowAdminPanel(true);
+        toast.success("Welcome, Admin!");
+      } else {
+        setLoginError("Invalid admin credentials.");
+      }
+      return;
+    }
+
+    // Regular user login via backend
+    try {
+      const level = await loginUser.mutateAsync({
+        username: loginUsername.trim(),
+        password: loginPassword.trim(),
+      });
+      login(loginUsername.trim(), level);
+      setLoginOpen(false);
+      toast.success(`Welcome back, ${loginUsername.trim()}!`);
+    } catch {
+      setLoginError("Invalid username or password.");
+    }
+  }
+
+  // ── Day Options ─────────────────────────────────────────────────────────────
 
   const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
-  // yearOptions moved to YearScrollPicker component
+
+  // ── Admin panel view ─────────────────────────────────────────────────────────
+
+  if (showAdminPanel) {
+    return (
+      <>
+        <Toaster position="top-right" />
+        <AdminPanel onBack={() => setShowAdminPanel(false)} />
+      </>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex flex-col z-10">
       <Toaster position="top-right" />
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <header className="relative pt-8 pb-6 text-center">
+      <header className="relative pt-6 pb-4 text-center">
+        {/* Auth bar */}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {auth ? (
+            <>
+              <span
+                className="font-body text-xs hidden sm:block"
+                style={{ color: "oklch(var(--muted-foreground))" }}
+              >
+                {auth.isAdmin ? "Admin" : auth.username}
+              </span>
+              {auth.isAdmin && (
+                <button
+                  type="button"
+                  data-ocid="admin_panel.open_modal_button"
+                  onClick={() => setShowAdminPanel(true)}
+                  className="p-1.5 rounded-md transition-colors"
+                  style={{ color: "oklch(var(--primary))" }}
+                  title="Open Admin Panel"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                data-ocid="auth.toggle"
+                onClick={logout}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-body font-semibold transition-colors"
+                style={{
+                  background: "oklch(var(--secondary))",
+                  color: "oklch(var(--muted-foreground))",
+                  border: "1px solid oklch(var(--border))",
+                }}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              data-ocid="login.open_modal_button"
+              onClick={() => openLoginModal(false)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-body font-semibold transition-colors"
+              style={{
+                background: "oklch(var(--primary))",
+                color: "oklch(var(--primary-foreground))",
+              }}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Login
+            </button>
+          )}
+        </div>
+
         <div className="flex items-center justify-center gap-3 mb-1">
           <Stars
             className="w-6 h-6"
@@ -301,6 +436,13 @@ export default function App() {
             >
               Compare
             </TabsTrigger>
+            <TabsTrigger
+              value="predictions"
+              data-ocid="predictions_tab.tab"
+              className="flex-1 font-body data-[state=active]:font-semibold"
+            >
+              Predict
+            </TabsTrigger>
           </TabsList>
 
           {/* ── New Chart Tab ────────────────────────────────────────────── */}
@@ -369,6 +511,7 @@ export default function App() {
                       Month
                     </Label>
                     <select
+                      data-ocid="dob.input"
                       value={dob.month}
                       onChange={(e) =>
                         setDob((prev) => ({ ...prev, month: e.target.value }))
@@ -387,13 +530,13 @@ export default function App() {
                       </option>
                       {monthOptions.map((m) => (
                         <option key={m} value={String(m)}>
-                          {String(m).padStart(2, "0")} – {getMonthName(m)}
+                          {getMonthName(m)}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* Year – custom scroll picker */}
+                  {/* Year */}
                   <div className="space-y-1.5">
                     <Label
                       className="text-xs uppercase tracking-wider font-body"
@@ -454,7 +597,7 @@ export default function App() {
                       <SummaryPill
                         label="Basic"
                         value={result.basicNumber}
-                        color="oklch(var(--number-basic))"
+                        color="#dc2626"
                       />
                       <div
                         className="w-px h-8"
@@ -463,7 +606,7 @@ export default function App() {
                       <SummaryPill
                         label="Destiny"
                         value={result.destinyNumber}
-                        color="oklch(var(--number-destiny))"
+                        color="#eab308"
                       />
                     </div>
 
@@ -510,7 +653,7 @@ export default function App() {
                             From Year
                           </Label>
                           <Input
-                            data-ocid="year_range.input"
+                            data-ocid="year_range_from.input"
                             type="number"
                             min={1900}
                             max={2200}
@@ -535,7 +678,7 @@ export default function App() {
                             To Year
                           </Label>
                           <Input
-                            data-ocid="year_range.input"
+                            data-ocid="year_range_to.input"
                             type="number"
                             min={1900}
                             max={2200}
@@ -588,6 +731,8 @@ export default function App() {
                             natalCellCounts={result.cellCounts}
                             fromYear={fromYear}
                             toYear={toYear}
+                            canAccessMonth={sectionLevel >= 2}
+                            onMonthLocked={() => setShowMonthGate(true)}
                           />
                         </motion.div>
                       )}
@@ -698,13 +843,13 @@ export default function App() {
                           <div className="flex gap-3 mt-1.5">
                             <span
                               className="font-body text-xs"
-                              style={{ color: "oklch(var(--number-basic))" }}
+                              style={{ color: "#dc2626" }}
                             >
                               Basic: {String(chart.basicNumber)}
                             </span>
                             <span
                               className="font-body text-xs"
-                              style={{ color: "oklch(var(--number-destiny))" }}
+                              style={{ color: "#eab308" }}
                             >
                               Destiny: {String(chart.destinyNumber)}
                             </span>
@@ -871,7 +1016,7 @@ export default function App() {
                             </option>
                             {monthOptions.map((m) => (
                               <option key={m} value={String(m)}>
-                                {String(m).padStart(2, "0")} – {getMonthName(m)}
+                                {getMonthName(m)}
                               </option>
                             ))}
                           </select>
@@ -972,7 +1117,7 @@ export default function App() {
                             </option>
                             {monthOptions.map((m) => (
                               <option key={m} value={String(m)}>
-                                {String(m).padStart(2, "0")} – {getMonthName(m)}
+                                {getMonthName(m)}
                               </option>
                             ))}
                           </select>
@@ -994,7 +1139,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Shared Year Range */}
+                    {/* Year Range */}
                     <div
                       className="rounded-lg p-5"
                       style={{
@@ -1146,9 +1291,7 @@ export default function App() {
                                   </p>
                                   <p
                                     className="font-display text-2xl font-bold"
-                                    style={{
-                                      color: "oklch(var(--number-basic))",
-                                    }}
+                                    style={{ color: "#dc2626" }}
                                   >
                                     {p1Result.basicNumber}
                                   </p>
@@ -1164,9 +1307,7 @@ export default function App() {
                                   </p>
                                   <p
                                     className="font-display text-2xl font-bold"
-                                    style={{
-                                      color: "oklch(var(--number-destiny))",
-                                    }}
+                                    style={{ color: "#eab308" }}
                                   >
                                     {p1Result.destinyNumber}
                                   </p>
@@ -1200,9 +1341,7 @@ export default function App() {
                                   </p>
                                   <p
                                     className="font-display text-2xl font-bold"
-                                    style={{
-                                      color: "oklch(var(--number-basic))",
-                                    }}
+                                    style={{ color: "#dc2626" }}
                                   >
                                     {p2Result.basicNumber}
                                   </p>
@@ -1218,9 +1357,7 @@ export default function App() {
                                   </p>
                                   <p
                                     className="font-display text-2xl font-bold"
-                                    style={{
-                                      color: "oklch(var(--number-destiny))",
-                                    }}
+                                    style={{ color: "#eab308" }}
                                   >
                                     {p2Result.destinyNumber}
                                   </p>
@@ -1257,7 +1394,7 @@ export default function App() {
                               className="font-display text-sm font-semibold mb-3"
                               style={{ color: "oklch(var(--primary))" }}
                             >
-                              Person 1 —{" "}
+                              Person 1 &mdash;{" "}
                               {formatDOB(
                                 Number.parseInt(p1Dob.day, 10),
                                 Number.parseInt(p1Dob.month, 10),
@@ -1273,6 +1410,8 @@ export default function App() {
                               natalCellCounts={p1Result.cellCounts}
                               fromYear={compFromYear}
                               toYear={compToYear}
+                              canAccessMonth={sectionLevel >= 2}
+                              onMonthLocked={() => setShowMonthGate(true)}
                             />
                           </div>
 
@@ -1288,7 +1427,7 @@ export default function App() {
                               className="font-display text-sm font-semibold mb-3"
                               style={{ color: "oklch(var(--primary))" }}
                             >
-                              Person 2 —{" "}
+                              Person 2 &mdash;{" "}
                               {formatDOB(
                                 Number.parseInt(p2Dob.day, 10),
                                 Number.parseInt(p2Dob.month, 10),
@@ -1304,6 +1443,8 @@ export default function App() {
                               natalCellCounts={p2Result.cellCounts}
                               fromYear={compFromYear}
                               toYear={compToYear}
+                              canAccessMonth={sectionLevel >= 2}
+                              onMonthLocked={() => setShowMonthGate(true)}
                             />
                           </div>
                         </div>
@@ -1314,16 +1455,127 @@ export default function App() {
               </AnimatePresence>
             </motion.div>
           </TabsContent>
+
+          {/* ── Predictions Tab (Section 3) ───────────────────────────── */}
+          <TabsContent value="predictions" className="mt-0">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {sectionLevel >= 3 ? (
+                <div
+                  data-ocid="predictions.panel"
+                  className="rounded-lg p-8 text-center space-y-4"
+                  style={{
+                    background: "oklch(var(--card))",
+                    border: "1px solid oklch(var(--border))",
+                  }}
+                >
+                  <Sparkles
+                    className="w-12 h-12 mx-auto"
+                    style={{ color: "oklch(var(--primary))" }}
+                  />
+                  <h2
+                    className="font-display text-xl font-bold"
+                    style={{ color: "oklch(var(--primary))" }}
+                  >
+                    Advanced Predictions
+                  </h2>
+                  <p
+                    className="font-body text-sm"
+                    style={{ color: "oklch(var(--muted-foreground))" }}
+                  >
+                    Coming Soon — Advanced Vedic numerology predictions will be
+                    available here.
+                  </p>
+                  <div
+                    className="inline-block font-body text-xs px-3 py-1.5 rounded-full"
+                    style={{
+                      background: "oklch(var(--primary) / 0.1)",
+                      color: "oklch(var(--primary))",
+                    }}
+                  >
+                    🚧 In Development
+                  </div>
+                </div>
+              ) : sectionLevel > 0 ? (
+                <div
+                  data-ocid="predictions.error_state"
+                  className="rounded-lg p-8 text-center space-y-4"
+                  style={{
+                    background: "oklch(var(--card))",
+                    border: "1px solid oklch(var(--border))",
+                  }}
+                >
+                  <Lock
+                    className="w-10 h-10 mx-auto opacity-50"
+                    style={{ color: "oklch(var(--muted-foreground))" }}
+                  />
+                  <h2
+                    className="font-display text-lg font-semibold"
+                    style={{ color: "oklch(var(--foreground))" }}
+                  >
+                    Advanced Plan Required
+                  </h2>
+                  <p
+                    className="font-body text-sm"
+                    style={{ color: "oklch(var(--muted-foreground))" }}
+                  >
+                    Upgrade to the Advanced plan to access predictions.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  data-ocid="predictions.error_state"
+                  className="rounded-lg p-8 text-center space-y-4"
+                  style={{
+                    background: "oklch(var(--card))",
+                    border: "1px solid oklch(var(--border))",
+                  }}
+                >
+                  <Lock
+                    className="w-10 h-10 mx-auto opacity-50"
+                    style={{ color: "oklch(var(--muted-foreground))" }}
+                  />
+                  <h2
+                    className="font-display text-lg font-semibold"
+                    style={{ color: "oklch(var(--foreground))" }}
+                  >
+                    Login Required
+                  </h2>
+                  <p
+                    className="font-body text-sm"
+                    style={{ color: "oklch(var(--muted-foreground))" }}
+                  >
+                    This section requires an Advanced account.
+                  </p>
+                  <Button
+                    data-ocid="predictions.open_modal_button"
+                    onClick={() => openLoginModal(false)}
+                    className="font-body font-semibold gap-2"
+                    style={{
+                      background: "oklch(var(--primary))",
+                      color: "oklch(var(--primary-foreground))",
+                    }}
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Login
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          </TabsContent>
         </Tabs>
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="py-6 text-center">
+      <footer className="py-6 text-center space-y-2">
         <p
           className="font-body text-xs"
           style={{ color: "oklch(var(--muted-foreground))" }}
         >
-          © {new Date().getFullYear()}. Built with ♥ using{" "}
+          &copy; {new Date().getFullYear()}. Built with &hearts; using{" "}
           <a
             href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
             target="_blank"
@@ -1334,7 +1586,69 @@ export default function App() {
             caffeine.ai
           </a>
         </p>
+        {/* Subtle admin link */}
+        <button
+          type="button"
+          data-ocid="admin_login.open_modal_button"
+          onClick={() => openLoginModal(true)}
+          className="font-body text-[10px] opacity-30 hover:opacity-60 transition-opacity"
+          style={{ color: "oklch(var(--muted-foreground))" }}
+        >
+          Admin
+        </button>
       </footer>
+
+      {/* ── Month gate dialog ─────────────────────────────────────────────── */}
+      <Dialog open={showMonthGate} onOpenChange={setShowMonthGate}>
+        <DialogContent
+          data-ocid="month_gate.dialog"
+          style={{
+            background: "oklch(var(--card))",
+            border: "1px solid oklch(var(--border))",
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              Paid Section
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p
+              className="font-body text-sm"
+              style={{ color: "oklch(var(--muted-foreground))" }}
+            >
+              Month and Day charts require a paid account. Please login with
+              your paid credentials to access this section.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              data-ocid="month_gate.cancel_button"
+              onClick={() => setShowMonthGate(false)}
+              className="font-body"
+            >
+              Close
+            </Button>
+            <Button
+              data-ocid="month_gate.confirm_button"
+              onClick={() => {
+                setShowMonthGate(false);
+                openLoginModal(false);
+              }}
+              className="font-body"
+              style={{
+                background: "oklch(var(--primary))",
+                color: "oklch(var(--primary-foreground))",
+              }}
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Login
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Save Dialog ───────────────────────────────────────────────────── */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
@@ -1380,7 +1694,8 @@ export default function App() {
                   Number.parseInt(dob.month, 10),
                   Number.parseInt(dob.year, 10),
                 )}{" "}
-                · Basic: {result.basicNumber} · Destiny: {result.destinyNumber}
+                &middot; Basic: {result.basicNumber} &middot; Destiny:{" "}
+                {result.destinyNumber}
               </p>
             )}
           </div>
@@ -1414,6 +1729,100 @@ export default function App() {
                 </>
               ) : (
                 "Save Chart"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Login Dialog ──────────────────────────────────────────────────── */}
+      <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
+        <DialogContent
+          data-ocid="login.dialog"
+          style={{
+            background: "oklch(var(--card))",
+            border: "1px solid oklch(var(--border))",
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {loginIsAdmin ? "Admin Login" : "User Login"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="font-body text-sm">
+                {loginIsAdmin ? "Email" : "Username"}
+              </Label>
+              <Input
+                data-ocid="login.input"
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                placeholder={loginIsAdmin ? "Admin email" : "Your username"}
+                autoFocus
+                className="font-body"
+                style={{
+                  background: "oklch(var(--input))",
+                  borderColor: "oklch(var(--border))",
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-body text-sm">Password</Label>
+              <Input
+                data-ocid="login.input"
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Password"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLoginSubmit();
+                }}
+                className="font-body"
+                style={{
+                  background: "oklch(var(--input))",
+                  borderColor: "oklch(var(--border))",
+                }}
+              />
+            </div>
+            {loginError && (
+              <p
+                data-ocid="login.error_state"
+                className="text-xs font-body"
+                style={{ color: "oklch(var(--destructive))" }}
+              >
+                {loginError}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              data-ocid="login.cancel_button"
+              onClick={() => setLoginOpen(false)}
+              className="font-body"
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="login.submit_button"
+              onClick={handleLoginSubmit}
+              disabled={loginUser.isPending}
+              className="font-body"
+              style={{
+                background: "oklch(var(--primary))",
+                color: "oklch(var(--primary-foreground))",
+              }}
+            >
+              {loginUser.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
               )}
             </Button>
           </DialogFooter>

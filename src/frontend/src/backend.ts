@@ -89,60 +89,72 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface Chart {
-    id: bigint;
-    dob: string;
-    name: string;
-    basicNumber: bigint;
-    destinyNumber: bigint;
-    chartNumbers: Array<bigint>;
+export interface User {
+    username: string;
+    passwordHash: string;
+    sectionLevel: bigint;
 }
 export interface backendInterface {
-    createChart(name: string, dob: string, basicNumber: bigint, destinyNumber: bigint, chartNumbers: Array<bigint>): Promise<bigint>;
-    deleteChart(id: bigint): Promise<void>;
-    getAllCharts(): Promise<Array<Chart>>;
+    createUser(adminUsername: string, adminPassword: string, username: string, password: string, sectionLevel: bigint): Promise<void>;
+    deleteUser(adminUsername: string, adminPassword: string, username: string): Promise<void>;
+    listUsers(adminUsername: string, adminPassword: string): Promise<Array<User>>;
+    login(username: string, password: string): Promise<bigint>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async createChart(arg0: string, arg1: string, arg2: bigint, arg3: bigint, arg4: Array<bigint>): Promise<bigint> {
+    async createUser(arg0: string, arg1: string, arg2: string, arg3: string, arg4: bigint): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.createChart(arg0, arg1, arg2, arg3, arg4);
+                const result = await this.actor.createUser(arg0, arg1, arg2, arg3, arg4);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createChart(arg0, arg1, arg2, arg3, arg4);
+            const result = await this.actor.createUser(arg0, arg1, arg2, arg3, arg4);
             return result;
         }
     }
-    async deleteChart(arg0: bigint): Promise<void> {
+    async deleteUser(arg0: string, arg1: string, arg2: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.deleteChart(arg0);
+                const result = await this.actor.deleteUser(arg0, arg1, arg2);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.deleteChart(arg0);
+            const result = await this.actor.deleteUser(arg0, arg1, arg2);
             return result;
         }
     }
-    async getAllCharts(): Promise<Array<Chart>> {
+    async listUsers(arg0: string, arg1: string): Promise<Array<User>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getAllCharts();
+                const result = await this.actor.listUsers(arg0, arg1);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getAllCharts();
+            const result = await this.actor.listUsers(arg0, arg1);
+            return result;
+        }
+    }
+    async login(arg0: string, arg1: string): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.login(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.login(arg0, arg1);
             return result;
         }
     }
